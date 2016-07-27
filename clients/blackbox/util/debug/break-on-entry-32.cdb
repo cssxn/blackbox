@@ -1,0 +1,29 @@
+$$ debug the child process
+.childdbg 1
+g
+
+$$ step by source line
+l+t
+
+$$ show source line at every stop and step
+l+s
+
+!load wow64exts
+!sym noisy
+.lines
+
+.ocommand _debug_ 
+sxi 80000003 
+sxd av
+
+$$ initial breakpoints
+bp dynamorio!dynamorio_app_init
+bp dynamorio!internal_error
+bp dynamorio!external_error
+bp dynamorio!notify_gencode_complete+0x3
+bp dynamorio!report_dynamorio_problem+0x42f
+bp dynamorio!check_internal_exception+0x125
+bp dynamorio!dr_messagebox
+$$ bp dynamorio!DllMain+0xec
+bd 3
+g                              

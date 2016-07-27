@@ -73,7 +73,7 @@ if (SECURITY_AUDIT) # around whole file
     add_custom_command(TARGET blackbox
       POST_BUILD
       COMMAND ${CMAKE_COMMAND}
-      ARGS -E echo "Usage: pass to drconfig or drrun: -t blackbox"
+      ARGS -E echo "Usage: pass to drconfig or drrun: -c blackbox"
       VERBATIM)
   endif ()
 

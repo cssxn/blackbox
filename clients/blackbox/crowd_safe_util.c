@@ -737,9 +737,9 @@ create_output_file(const char *filename) {
     result = dr_open_file(filename, DR_FILE_WRITE_REQUIRE_NEW);
     if (result == INVALID_FILE) {
         if (dr_file_exists(filename))
-            dr_fprintf(STDERR, "Error: unable to create file %s because it already exists!\n");
+            dr_fprintf(STDERR, "Error: unable to create file %s because it already exists!\n", filename);
         else
-            dr_fprintf(STDERR, "Error: unable to create file %s!\n");
+            dr_fprintf(STDERR, "Error: unable to create file %s!\n", filename);
     }
 
     CS_LOG("Created Crowd-Safe output file %s\n", filename);

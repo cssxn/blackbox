@@ -1,0 +1,141 @@
+#!/bin/bash
+
+function usage() {
+  echo "bb [options] <program-path> [<program-arguments>]"
+  echo "   -g | generate graphs"
+  echo "   -b : analysis level (integer 1-4)"
+  echo "   -l : DynamoRIO log level (integer 1-6)"
+  echo "   -m : monitor file (absolute or relative path)"
+  echo "   -t : deadlock timeout (in milliseconds)"
+}
+
+function activate_output() {
+  [ ! -z $quiet ] && exec 1>&3
+}
+
+function deactivate_output() {
+  [ ! -z $quiet ] && exec 1>/dev/null
+}
+
+[ -z $DYNAMORIO_HOME ] && "This script requires variable \$DYNAMORIO_HOME. Please point this variable to \$blackbox/build." && exit
+
+[ -z DYNAMORIO_CONFIGDIR ] && export DYNAMORIO_CONFIGDIR=.
+
+export LD_USE_LOAD_BIAS=1
+
+monitor=false
+bb_options=""
+dr_options="-no_native_exec_syscalls -handle_ntdll_modify 3"
+empty_client="-client $DYNAMORIO_HOME/lib32/libempty.so 0 \"\""
+timeout="10000"
+
+[ -z $DR_LOG_DIR ] && DR_LOG_DIR=$(pwd)"\\dr-logs"
+
+while getopts ":qb:wl:dmhnegt:si:v:a:xo:pk" Option
+do
+  case $Option in
+    q ) quiet=true; exec 3>&1; exec 1>/dev/null;; # hide stdout in &3
+    d ) debugger="$WINDBG -Q -W cs32 -c $><$DYNAMORIO_HOME/break-on-entry-32.cdb";;
+    b ) bb_options=$bb_options" -bb_analysis_level $OPTARG";;
+    l ) dr_options=$dr_options" -loglevel $OPTARG";
+        mkdir -p $DR_LOG_DIR;
+        echo "Writing DR logs to $DR_LOG_DIR";;
+    h ) dataset_home=true;;
+    m ) monitor=true; dataset_home=true; bb_options=$bb_options" -monitor ";;
+    n ) netmon=true;;
+    g ) dataset_home=true; bb_options=$bb_options" -bb_graph";;
+    t ) timeout=$OPTARG;;
+    s ) synchronous=true;;
+    i ) input=$OPTARG;;
+    v ) vm_size=$OPTARG;;
+    a ) alarm=$OPTARG;;
+    x ) dr_options=$dr_options" -disable_traces";;
+    o ) dr_options=$dr_options" $OPTARG";;
+    p ) dr_options=$dr_options" -protect_mask 0x10f";;
+    k ) dr_options=$dr_options" -meta_on_clock";;
+    * ) usage; exit;;
+  esac
+done
+
+shift $(($OPTIND - 1))
+
+if [[ "$1" == *\\* ]]
+then
+  app_name=${1##*/}
+  app_name=${app_name##*\\}
+else
+  target=$(which $1)
+  app_name=${target##*/}
+fi
+app_name=$(echo $app_name | tr '[:upper:]' '[:lower:]')
+
+if $dataset_home
+then
+  [ -z "$CROWD_SAFE_DATASET_DIR" ] && echo "The dataset_home option (-h) requires environment variable CROWD_SAFE_DATASET_DIR" && exit
+  if $monitor
+  then
+    [ ! -e "$CROWD_SAFE_DATASET_DIR"/$app_name/process-dataset-map.cfg ] && \
+      echo "The monitor option (-m) requires file '$CROWD_SAFE_DATASET_DIR/$app_name/process-dataset-map.cfg'" && exit
+  fi
+
+  dataset_dir=$CROWD_SAFE_DATASET_DIR"\\"$app_name"\\"
+  bb_options=$bb_options" -dataset_home "$dataset_dir
+  echo " > Monitor activated with datasets in '"$dataset_dir"'"
+fi
+
+[ ! -z $alarm ] && bb_options=$bb_options" -alarm "$alarm
+[ ! -z $netmon ] && bb_options=$bb_options" -netmon"
+
+dr_options=$dr_options" -no_enable_reset -deadlock_timeout "$timeout
+[ ! -z $vm_size ] && dr_options=$dr_options" -vm_size "$vm_size
+
+mkdir -p "$DR_LOG_DIR"
+
+drrun="${DYNAMORIO_HOME%/}/bin32/drrun.exe"
+bb="${DYNAMORIO_HOME%/}/clients/lib32/debug/blackbox.dll"
+
+if [ ! -f $drrun ]
+then
+  echo "Cannot find the DynamoRIO launcher 'drrun.exe' at the expected location:"
+  echo "    "$drrun
+  echo "    Exiting now."
+  exit
+fi
+
+echo "Running BlackBox debug build with DynamoRIO root \"$DYNAMORIO_HOME\""
+echo "Launcher: \"$drrun\""
+echo "DynamoRIO options: \"$dr_options\""
+echo "BlackBox options: \"$bb_options\""
+echo "App with args: \"$@\""
+
+if [ -z $synchronous ]
+then
+  if [ -z "$input" ]
+  then
+    # echo "Command: $debugger $drrun -debug -root $DYNAMORIO_HOME -logdir \"$DR_LOG_DIR\" -ops \"$dr_options\" -c $bb \"$bb_options\" -- \"$@\" &"
+    activate_output
+    $debugger $drrun -debug -root $DYNAMORIO_HOME -logdir "$DR_LOG_DIR" -ops "$dr_options" -c $bb "$bb_options" -- "$@" &
+    deactivate_output
+  else
+    echo "App input: \"$input\""
+    activate_output
+    $debugger $drrun -debug -root $DYNAMORIO_HOME -logdir "$DR_LOG_DIR" -ops "$dr_options" -c $bb "$bb_options" -- "$@" < $input &
+    deactivate_output
+  fi
+  app="$(basename "$1")"
+  sleep 1
+  pid=$(ls -1t $CROWD_SAFE_HASHLOG_PATH/$app*proc*.log | head -1 | awk -F '/' '{print $NF}' | awk -F '[-.]' '{print $11}')
+  echo " > Launched $app with pid $pid"
+else
+  if [ -z "$input" ]
+  then
+    activate_output
+    $drrun -debug -root $DYNAMORIO_HOME -logdir "$DR_LOG_DIR" -ops "$dr_options" -c $bb "$bb_options" -- "$@"
+    deactivate_output
+  else
+    echo "App input: \"$input\""
+    activate_output
+    $drrun -debug -root $DYNAMORIO_HOME -logdir "$DR_LOG_DIR" -ops "$dr_options" -c $bb "$bb_options" -- "$@" < $input
+    deactivate_output
+  fi
+fi

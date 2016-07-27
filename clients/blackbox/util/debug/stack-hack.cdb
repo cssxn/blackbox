@@ -1,0 +1,6 @@
+$$ $><c:\dev\blackbox\build\stack-hack.cdb
+
+r $t0=poi(dynamorio!tls_dcontext_offs)
+r $t0=poi(fs:@$t0)
+ed @$teb+4 @@(((dcontext_t*)@$t0)->dstack)
+ed @$teb+8 @@(((dcontext_t*)@$t0)->dstack - dynamo_options.stack_size)
