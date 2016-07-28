@@ -159,6 +159,7 @@ audit_create_logfile()
 static void
 audit_exit()
 {
+    close_crowd_safe_trace();
     destroy_link_observer();
 }
 
@@ -262,9 +263,9 @@ audit_process_terminating(bool external, bool is_crash, const char *file,
         CS_LOG("DynamoRIO %s error at %s(%d): %s\n", external ? "external" : "internal",
                file, line, expr);
         // CS_STACKTRACE();
+
+        notify_process_terminating(is_crash);
     }
-    notify_process_terminating(is_crash);
-    close_crowd_safe_trace();
 }
 
 static void

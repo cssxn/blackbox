@@ -2110,7 +2110,7 @@ IF_RCT_IND_BRANCH(options->rct_ind_jump = OPTION_DISABLED;)
      */
     OPTION_DEFAULT(liststring_t, native_exec_list, EMPTY_STRING,
                    "execute these ;-separated modules natively")
-    OPTION_DEFAULT(bool, native_exec_syscalls, true, "intercept system calls while application is native")
+    OPTION_DEFAULT(bool, native_exec_syscalls, false, "intercept system calls while application is native")
     OPTION_DEFAULT(bool, native_exec_dircalls, true, "check direct calls as gateways to native_exec modules")
     OPTION_DEFAULT(bool, native_exec_callcall, true, "put gateway on 1st call of a pair where 2nd targets a native_exec module")
     OPTION_DEFAULT(bool, native_exec_guess_calls, true, "if TOS looks like a ret addr, assume transition to a new module was via call*")
