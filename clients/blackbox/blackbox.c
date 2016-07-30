@@ -406,10 +406,28 @@ static audit_callbacks_t callbacks = {
 
 #define MAX_MONITOR_DATASET_DIR_LEN 256
 
+typedef struct _blackbox_option_t {
+    const char *name;
+    bool is_flag;
+    union {
+        bool is_set;
+        char *value;
+    };
+} blackbox_option_t;
+
+static blackbox_option_t blackbox_options[] = {
+    { "dataset_home", false, 0 },
+    { "monitor", true, 0 },
+    { "netmon", true, 0 },
+    { "meta_on_clock", true, 0 },
+    { "wdb_script", false, 0 },
+    { "analysis", true, 0 }
+};
+#define OPTION_COUNT 6
+
 uint crowd_safe_options = 0;
 uint bb_analysis_level;
-static char monitor_dataset_buf[MAX_MONITOR_DATASET_DIR_LEN] = {0};
-char *monitor_dataset_dir = monitor_dataset_buf;
+char *monitor_dataset_dir;
 uint64 process_start_time;
 
 static inline bool
@@ -436,40 +454,84 @@ get_uint_option(const char *option, uint *value)
 static void
 parse_options(client_id_t id)
 {
-    const char *options = dr_get_options(id);
+    uint i = 0, index;
+    char c, buffer[32];
+    const char *option, *options = dr_get_options(id);
 
     dr_printf("options: %s\n", options);
 
-    if (options != NULL && strstr("-dataset_home", options) == 0) {
-        options += strlen("-dataset_home ");
-        strcpy(monitor_dataset_buf, options);
+    while (true) {
+        c = *options;
+        options++;
+
+        if (c == '\n' || c == '\0')
+            break;
+
+        if (c == ' ')
+            continue;
+
+        if (c == '-') {
+            i = 0;
+            while (true) {
+                c = *options;
+                if (c == ' ' || c == '\n' || c == '\0')
+                    break;
+                else
+                    buffer[i++] = c;
+                options++;
+            }
+            buffer[i] = '\0';
+
+            for (index = 0; index < OPTION_COUNT; index++) {
+                if (strcmp(blackbox_options[index].name, buffer) == 0) {
+                    if (blackbox_options[index].is_flag) {
+                        blackbox_options[index].is_set = true;
+                    } else {
+                        do {
+                            options++;
+                            c = *options;
+                        } while (c == ' ');
+
+                        i = 0;
+                        option = options;
+
+                        while (c != ' ' && c != '\n' && c != '\0') {
+                            i++;
+                            options++;
+                            c = *options;
+                        }
+
+                        blackbox_options[index].value = CS_ALLOC(i + 1);
+                        memcpy(blackbox_options[index].value, option, i);
+                        blackbox_options[index].value[i] = '\0';
+                    }
+                    break;
+                }
+            }
+            if (i == OPTION_COUNT)
+                CS_ERR("Unrecognized option token '%s'\n", buffer); // log not initialized yet!
+        } else {
+            CS_ERR("Unrecognized option token at '%s'\n", options);
+            do {
+                c = *options;
+                options++;
+            } while (c != ' ' && c != '\n' && c != '\0');
+        }
     }
 
-    if (has_option("monitor"))
+    monitor_dataset_dir = blackbox_options[0].value;
+    if (blackbox_options[1].is_set)
         crowd_safe_options |= CROWD_SAFE_MONITOR_OPTION;
-
-        /*
-        alarm_type = dr_get_integer_option(alarm);
-        if (alarm_type > ALARM_OFF) {
-#ifdef MONITOR_UNEXPECTED_IBP
-            crowd_safe_options |= CROWD_SAFE_ALARM_OPTION;
-#else
-            CS_ERR("Request for alarm type %d is ignored because unexpected IBP are not monitored in this build. "
-                "Requires #define MONITOR_UNEXPECTED_IBP\n", alarm_type);
-#endif
-        }
-        */
-
+    if (blackbox_options[2].is_set)
+        crowd_safe_options |= CROWD_SAFE_NETWORK_MONITOR_OPTION;
+    if (blackbox_options[3].is_set)
+        crowd_safe_options |= CROWD_SAFE_META_ON_CLOCK_OPTION;
+    if (blackbox_options[4].is_set)
+        crowd_safe_options |= CROWD_SAFE_DEBUG_SCRIPT_OPTION;
+    if (blackbox_options[5].is_set)
+        crowd_safe_options |= CROWD_SAFE_BB_ANALYSIS_OPTION;
     //if (has_option("xhash"))
         crowd_safe_options |= CROWD_SAFE_RECORD_XHASH_OPTION;
-    if (has_option("netmon"))
-        crowd_safe_options |= CROWD_SAFE_NETWORK_MONITOR_OPTION;
-    if (has_option("meta_on_clock"))
-        crowd_safe_options |= CROWD_SAFE_META_ON_CLOCK_OPTION;
-    if (has_option("wdb_script"))
-        crowd_safe_options |= CROWD_SAFE_DEBUG_SCRIPT_OPTION;
-    if (get_uint_option("analysis", &bb_analysis_level))
-        crowd_safe_options |= CROWD_SAFE_BB_ANALYSIS_OPTION;
 }
 
 DR_EXPORT void
@@ -485,11 +547,6 @@ dr_init(client_id_t id)
 
     dr_register_exit_event(event_exit);
     dr_register_audit_callbacks(&callbacks);
-
-    /*
-    dr_get_string_option("dataset_home",
-                         monitor_dataset_dir, MAX_MONITOR_DATASET_DIR_LEN);
-    */
 
     init_crowd_safe_log(false/*not fork*/, dr_is_wow64());
     init_link_observer(GLOBAL_DCONTEXT, false/*not fork*/);

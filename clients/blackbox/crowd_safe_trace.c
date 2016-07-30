@@ -389,7 +389,7 @@ notify_code_modification(dcontext_t *dcontext, dr_fragment_t *exception_f, app_p
         bb_state_t *resume_state = get_bb_state(resume_tag);
         if ((resume_state == NULL) || !IS_BB_EXCEPTION(resume_state)) {
             bb_state_t *exception_block_state = get_bb_state(exception_f->tag);
-            byte exit_ordinal = dr_fragment_count_ordinals(exception_f);
+            byte exit_ordinal = default_edge_ordinal(exception_continuation_edge);
             if ((resume_state != NULL) && IS_BB_LIVE(resume_state)) {
                 write_graph_edge(dcontext, exception_f->tag, resume_tag, exception_block_state, resume_state,
                     module, module, exit_ordinal, exception_continuation_edge);

@@ -249,7 +249,7 @@ init_build_bb(build_bb_t *bb, app_pc start_pc, bool app_interp, bool for_cache,
     bb->follow_direct = !TEST(FRAG_SELFMOD_SANDBOXED, known_flags);
     bb->flags = known_flags;
 #ifdef SECURITY_AUDIT
-    bb->audit_sysnum = 0;
+    bb->audit_sysnum = -1;
 #endif
     DODEBUG(bb->initialized = true;);
 }

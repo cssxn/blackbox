@@ -253,22 +253,22 @@ typedef uint clock_type_t;
 #define MODULAR_PC(module, absolute_pc) \
     ((module->type == module_type_image) ? ((app_pc)(absolute_pc - module->start_pc)) : absolute_pc)
 
-#define GET_LAST_DECODED_TAG(cstl) (cstl->bb_meta.last_decoded_tag)
-#define GET_BUILDING_TAG(cstl) (cstl->bb_meta.building_tag)
-#define GET_BB_STATE(cstl) (cstl->bb_meta.state)
-#define GET_STATIC_SYSCALL_NUMBER(cstl) (cstl->bb_meta.syscall_number)
-#define GET_STATIC_SYSCALL_ORDINAL(cstl) (cstl->bb_meta.syscall_ordinal)
-#define GET_CLOBBERED_BLACK_BOX_HASH(cstl) (cstl->bb_meta.clobbered_black_box_hash)
-#define IS_BUILDING_TAG(cstl, tag) (cstl->bb_meta.building_tag == tag)
-#define IS_BLACK_BOX_THRASH(cstl) (cstl->bb_meta.is_black_box_thrash)
-#define IS_EXCEPTION_RESUMING(cstl) (cstl->bb_meta.is_exception_resuming)
-#define HAS_STATIC_SYSCALL(cstl) (cstl->bb_meta.syscall_number >= 0)
-#define HAS_CLOBBERED_BLACK_BOX_HASH(cstl) (cstl->bb_meta.clobbered_black_box_hash != 0ULL)
-#define SET_STATIC_SYSCALL_NUMBER(cstl, sysnum) (cstl->bb_meta.syscall_number = sysnum)
-#define SET_STATIC_SYSCALL_ORDINAL(cstl, ordinal) (cstl->bb_meta.syscall_ordinal = ordinal)
-#define SET_CLOBBERED_BLACK_BOX_HASH(cstl, hash) (cstl->bb_meta.clobbered_black_box_hash = hash)
-#define SET_BLACK_BOX_THRASH(cstl) (cstl->bb_meta.is_black_box_thrash = true)
-#define SET_EXCEPTION_RESUMING(cstl) (cstl->bb_meta.is_exception_resuming = true)
+#define GET_LAST_DECODED_TAG(cstl) ((cstl)->bb_meta.last_decoded_tag)
+#define GET_BUILDING_TAG(cstl) ((cstl)->bb_meta.building_tag)
+#define GET_BB_STATE(cstl) ((cstl)->bb_meta.state)
+#define GET_STATIC_SYSCALL_NUMBER(cstl) ((cstl)->bb_meta.syscall_number)
+#define GET_STATIC_SYSCALL_ORDINAL(cstl) ((cstl)->bb_meta.syscall_ordinal)
+#define GET_CLOBBERED_BLACK_BOX_HASH(cstl) ((cstl)->bb_meta.clobbered_black_box_hash)
+#define IS_BUILDING_TAG(cstl, tag) ((cstl)->bb_meta.building_tag == tag)
+#define IS_BLACK_BOX_THRASH(cstl) ((cstl)->bb_meta.is_black_box_thrash)
+#define IS_EXCEPTION_RESUMING(cstl) ((cstl)->bb_meta.is_exception_resuming)
+#define HAS_STATIC_SYSCALL(cstl) ((cstl)->bb_meta.syscall_number >= 0)
+#define HAS_CLOBBERED_BLACK_BOX_HASH(cstl) ((cstl)->bb_meta.clobbered_black_box_hash != 0ULL)
+#define SET_STATIC_SYSCALL_NUMBER(cstl, sysnum) ((cstl)->bb_meta.syscall_number = sysnum)
+#define SET_STATIC_SYSCALL_ORDINAL(cstl, ordinal) ((cstl)->bb_meta.syscall_ordinal = ordinal)
+#define SET_CLOBBERED_BLACK_BOX_HASH(cstl, hash) ((cstl)->bb_meta.clobbered_black_box_hash = hash)
+#define SET_BLACK_BOX_THRASH(cstl) ((cstl)->bb_meta.is_black_box_thrash = true)
+#define SET_EXCEPTION_RESUMING(cstl) ((cstl)->bb_meta.is_exception_resuming = true)
 
 #define GET_CSTL(dcontext) \
     ((crowd_safe_thread_local_t *) (dcontext_get_audit_state(dcontext)->security_audit_thread_local))
@@ -453,6 +453,14 @@ enum graph_edge_type {
     gencode_write_edge = 6,
     fork_edge = 7
 };
+
+typedef enum _graph_edge_ordinal {
+    branch_taken_ordinal = 0,
+    exception_ordinal = 10,
+    gencode_perm_ordinal = 11,
+    gencode_write_ordinal = 12,
+    fork_ordinal = 13
+} graph_edge_ordinal;
 
 typedef enum graph_meta_type graph_meta_type;
 enum graph_meta_type {
@@ -878,21 +886,23 @@ validate_ordinal(dcontext_t *dcontext, app_pc from, app_pc to, byte exit_ordinal
     if ((edge_type == gencode_write_edge) && (exit_ordinal < 5))
         return;
 
-    CS_WARN("High ordinal %d for edge type %d: "PX" to "PX"\n", exit_ordinal,
-            edge_type, from, to);
+    CS_LOG("High ordinal %d for edge type %d: "PX" to "PX"\n", exit_ordinal,
+           edge_type, from, to);
     dr_fragment_log_ordinals(dcontext, from, "\t", 3);
 }
 
 inline byte default_edge_ordinal(graph_edge_type edge_type) {
     switch (edge_type) {
         case gencode_perm_edge:
-            return 3;
+            return gencode_perm_ordinal;
         case gencode_write_edge:
-            return 4;
+            return gencode_write_ordinal;
         case fork_edge:
-            return 5;
+            return fork_ordinal;
+        case exception_continuation_edge:
+            return exception_ordinal;
         default:
-            return 0; /* for branch taken */
+            return branch_taken_ordinal;
     }
 }
 
