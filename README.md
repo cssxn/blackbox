@@ -11,7 +11,4 @@ To build BlackBox, simply follow the instructions for [building DynamoRIO](https
 
 Note that BlackBox currently only runs on 32-bit Windows 7 (minor changes will be required for other 32-bit versions of Windows, significant changes for x64 Windows, and a major port is required to run in Linux on either x86 or ARM). 
 
-To run a program in BlackBox, just follow the directions for [running programs in DynamoRIO](http://dynamorio.org/docs/page_deploy.html).
-
-The supporting tools and scripts for BlackBox will be made available in another [uci-plrg](https://github.com/uci-plrg) repository soon.
-
+To run a program in BlackBox, use the script [bb](clients/blackbox/util/debug/bb). See the [doc](doc) directory for more information, including detailed instructions for generating a trusted profile and monitoring a program.
