@@ -9,7 +9,7 @@ The typical usage model for monitoring a program with BlackBox involves 3 basic 
 
 The following sections give more details about each step. For build instructions, see the `doc/build.md` file in each repository.
 
-#### Generate Traces
+### Generate Traces
 
 Use the [bb](clients/blackbox/util/debug/bb) script to launch a program in BlackBox, for example notepad:
 
@@ -31,9 +31,9 @@ BlackBox will write several files during the execution, for example:
  
 Other than the **process.log** file, this data is unreadable and should be analyzed using the Java tools. 
 
-#### Generate *Trusted Profile* 
+### Generate *Trusted Profile* 
 
-Move or copy the files to a convenient location and run the following sequence of commands (which can be found in the **/scripts** directories of the Java tools ([common](https://github.com/uci-plrg/cfi-common/tree/master/scripts), [graph](https://github.com/uci-plrg/cfi-x86-graph/tree/master/scripts), [merge](https://github.com/uci-plrg/cfi-x86-merge/tree/master/scripts)):
+Move or copy the files to a convenient location (\<data-dir\>) and run the following sequence of commands (which can be found in the **/scripts** directories of the Java tools [common](https://github.com/uci-plrg/cfi-common/tree/master/scripts), [graph](https://github.com/uci-plrg/cfi-x86-graph/tree/master/scripts), [merge](https://github.com/uci-plrg/cfi-x86-merge/tree/master/scripts)):
 
 1. cd \<data-dir\> # where the above files are located
 2. split-hashlogs # splits the files into a subdirectory for each execution
@@ -44,6 +44,17 @@ Move or copy the files to a convenient location and run the following sequence o
 7. cs-train -o dataset.1 -n notepad -l logs/notepad.1.log cluster/* # only use `-n notepad` for the first merge
 8. generate-monitor-data -o notepad.monitor.dat dataset.1
 
-Copy notepad.monitor.dat to the `BLACKBOX_DATASET_DIR`.
+### Monitor the Program
+
+1. Copy `notepad.monitor.dat` to the directory `BLACKBOX_DATASET_DIR/notepad.exe/`
+2. Create file `BLACKBOX_DATASET_DIR/notepad.exe/process-dataset-map.cfg` with one entry:
+
+    notepad.exe|notepad.monitor.dat
+    
+3. Run the program in BlackBox using the monitor flag `-m`:
+
+    bb -m notepad
+    
+The process log for the new execution should indicate that the file `notepad.monitor.dat` has been loaded for monitoring. Any nodes and edges recorded in the dataset directory are exclusive to the monitor file, indicating that those elements were not observed during profiling (phase 1 above). To continue building the *trusted profile*, repeat phases 2 and 3 until the dataset has converged for the usage scenario that is being profiled. 
 
 
