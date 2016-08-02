@@ -16,91 +16,35 @@ function report() {
   echo $1 >> $config_file
 }
 
-crowd_safe="ON"
-crowd_safe_integration="ON"
-crowd_safe_data="ON"
-arch="64"
-
-while getopts "rxdiahn" Option
+while getopts "rxh" Option
 do
   case $Option in
     r ) debug="OFF";;
     x ) docs="ON";;
-    d ) crowd_safe_data="OFF";;
-    i ) crowd_safe_data="OFF"; crowd_safe_integration="OFF";;
-    a ) crowd_safe_data="OFF"; crowd_safe_integration="OFF"; crowd_safe="OFF";;
-    n ) arch="32";;
-    h ) echo -e "Usage: configure -[xdia]\n\twhere 'x' turns on docs, 'd' turns off data, 'i' turns off integration, and 'a' turns off everything (specify only one)."; exit;;
+    h ) echo -e "Usage: configure [-r release] [-x build DynamoRIO docs]" && exit
   esac
 done
 
 [ -z $debug ] && debug="ON"
 
-report 
-report "Configuring CrowdSafe DynamoRIO"
-report "INCLUDE_CROWD_SAFE=$crowd_safe"
-report "INCLUDE_CROWD_SAFE_INTEGRATION=$crowd_safe_integration"
-report "INCLUDE_CROWD_SAFE_DATA=$crowd_safe_data"
+: ${DYNAMORIO_SRC:="../.."}
+
+report
+report "Configuring BlackBox"
 report "BUILD_DOCS=$docs"
-report "arch=x$arch"
-report 
+report "Source in $DYNAMORIO_SRC"
+report
 
-os=$OS
-if [ -z $os ]; then
-  os="Linux"
-fi
+export CMAKEGEN64="Visual Studio 11 Win64"
+export ASM=ml
+export CC=cl
+export CXX=cl
+. ./dr-env-32
 
-# Note: SAMPLES has been hacked out in the root CMakeLists.txt b/c it ignored the -D
-  
-if [ $os == "Windows_NT" ]; then
-  : ${DYNAMORIO_SRC:="../.."}
-
-  echo "Source in $DYNAMORIO_SRC"
-  echo "MSVC_ENV: $MSVC_ENV"
-  if [ -z $MSVC_ENV ]; then
-    echo "Error: MSVC_ENV is not set!"
-    exit
-  elif [ $MSVC_ENV != $arch ]; then
-    echo "Error: the MSVC environment is set to $MSVC_ENV bits!"
-    exit
-  fi
-
-  if [ $arch == "32" ]; then
-
-    export CMAKEGEN64="Visual Studio 11 Win64"
-    export ASM=ml
-    export CC=cl
-    export CXX=cl
-    . /dev/admin/dr-env-32
-
-    # `WIN32=ON` is required for the pdb symbols to be generated correctly
-    cmake -G"Ninja" \
-      -DSECURITY_AUDIT=ON \
-      -DDEBUG=$debug -DBUILD_TOOLS=ON -DBUILD_EXT=ON -DBUILD_SAMPLES=OFF \
-      -DBUILD_CLIENTS=ON -DBUILD_TESTS=OFF -DBUILD_DOCS=$docs -DWIN32=ON \
-      -DVERSION_NUMBER:STRING=4.0.0 \
-      $DYNAMORIO_SRC 
-  else
-    # `WIN32=ON` is required for the pdb symbols to be generated correctly
-    cmake -G "Visual Studio 11 Win64" \
-      -DINCLUDE_CROWD_SAFE=$crowd_safe \
-      -DINCLUDE_CROWD_SAFE_INTEGRATION=$crowd_safe_integration \
-      -DINCLUDE_CROWD_SAFE_DATA=$crowd_safe_data \
-      -DDEBUG=$debug -DBUILD_TOOLS=ON -DBUILD_EXT=OFF -DBUILD_SAMPLES=OFF \
-      -DBUILD_TESTS=OFF -DBUILD_DOCS=$docs -DWIN32=ON \
-      -DVERSION_NUMBER:STRING=4.0.0 \
-      $DYNAMORIO_SRC 
-  fi  
-else
-  : ${DYNAMORIO_SRC:=".."}
-
-  echo "Source in $DYNAMORIO_SRC"
-
-  cmake \
-    -DINCLUDE_CROWD_SAFE=$crowd_safe \
-    -DINCLUDE_CROWD_SAFE_INTEGRATION=$crowd_safe_integration \
-    -DINCLUDE_CROWD_SAFE_DATA=$crowd_safe_data \
-    -DDEBUG=$debug -DBUILD_TOOLS=OFF -DBUILD_EXT=OFF -DBUILD_SAMPLES=OFF \
-    -DBUILD_CLIENTS=ON -DBUILD_TESTS=OFF -DBUILD_DOCS=$docs -DWIN32=OFF \
-    $DYNAMORIO_SRC 
-fi
+# `WIN32=ON` is required for the pdb symbols to be generated correctly
+cmake -G"Ninja" \
+  -DSECURITY_AUDIT=ON \
+  -DDEBUG=$debug -DBUILD_TOOLS=ON -DBUILD_EXT=ON -DBUILD_SAMPLES=OFF \
+  -DBUILD_CLIENTS=ON -DBUILD_TESTS=OFF -DBUILD_DOCS=$docs -DWIN32=ON \
+  -DVERSION_NUMBER:STRING=4.0.0 \
+  $DYNAMORIO_SRC
