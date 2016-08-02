@@ -25,8 +25,8 @@ extern const char *monitor_dataset_dir;
 
 /**** Private Fields ****/
 
-static const char *CROWD_SAFE_HASHLOG_DIR = "CROWD_SAFE_HASHLOG_DIR";
-static const char *CROWD_SAFE_DATASET_DIR = "CROWD_SAFE_DATASET_DIR";
+static const char *BLACKBOX_HASHLOG_DIR = "BLACKBOX_HASHLOG_DIR";
+static const char *BLACKBOX_DATASET_DIR = "BLACKBOX_DATASET_DIR";
 #ifdef UNIX
 static const char FILE_SEPARATOR_CHAR = '/';
 static const char *FILE_SEPARATOR_STRING = "/";
@@ -269,7 +269,7 @@ init_crowd_safe_log(bool is_fork, bool is_wow64_process) {
         dr_close_file(cs_log_file);
 #endif
     } else {
-        load_environment_dir((char*)&hashlog_dir, CROWD_SAFE_HASHLOG_DIR, DEFAULT_HASHLOG_DIRECTORY);
+        load_environment_dir((char*)&hashlog_dir, BLACKBOX_HASHLOG_DIR, DEFAULT_HASHLOG_DIRECTORY);
 
         parent_process_id = (int)dr_get_process_id();
     }

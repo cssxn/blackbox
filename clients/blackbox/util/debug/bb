@@ -71,14 +71,14 @@ app_name=$(echo $app_name | tr '[:upper:]' '[:lower:]')
 
 if $dataset_home
 then
-  [ -z "$CROWD_SAFE_DATASET_DIR" ] && echo "The dataset_home option (-h) requires environment variable CROWD_SAFE_DATASET_DIR" && exit
+  [ -z "$BLACKBOX_DATASET_DIR" ] && echo "The dataset_home option (-h) requires environment variable BLACKBOX_DATASET_DIR" && exit
   if $monitor
   then
-    [ ! -e "$CROWD_SAFE_DATASET_DIR"/$app_name/process-dataset-map.cfg ] && \
-      echo "The monitor option (-m) requires file '$CROWD_SAFE_DATASET_DIR/$app_name/process-dataset-map.cfg'" && exit
+    [ ! -e "$BLACKBOX_DATASET_DIR"/$app_name/process-dataset-map.cfg ] && \
+      echo "The monitor option (-m) requires file '$BLACKBOX_DATASET_DIR/$app_name/process-dataset-map.cfg'" && exit
   fi
 
-  dataset_dir=$CROWD_SAFE_DATASET_DIR"\\"$app_name"\\"
+  dataset_dir=$BLACKBOX_DATASET_DIR"\\"$app_name"\\"
   bb_options=$bb_options" -dataset_home "$dataset_dir
   echo " > Monitor activated with datasets in '"$dataset_dir"'"
 fi
